@@ -1,0 +1,22 @@
+# Downloaded datasets — excluded from version control (can be large)
+data/raw/
+
+# Eval run outputs
+runs/results/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db

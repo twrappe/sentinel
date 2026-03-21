@@ -1,0 +1,16 @@
+services:
+  sentinel:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - sentinel-data:/app/data
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    command: >
+      sh -c "pip install -e '.[dev]' --quiet && bash"
+    stdin_open: true
+    tty: true
+
+volumes:
+  sentinel-data:
