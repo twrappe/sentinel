@@ -17,11 +17,13 @@ The framework is intentionally domain-agnostic at the architecture level and bio
 
 ## Motivation
 
-LLMs are increasingly being applied to medical and wearable sensor data — summarizing biosignals, flagging anomalies, and generating clinical narratives. Yet most evaluation tooling treats these systems the same as general-purpose chatbots: exact match, BLEU score, human preference ratings.
+The research literature correlating biosignal modalities to clinical outcomes is mature and well-evidenced. The translation of that evidence into accessible, clinically validated products, however, remains limited.
 
-That's not good enough for health AI.
+The primary bottleneck is not scientific. For neurological conditions characterised by symptoms that are sudden, episodic, and difficult to observe in controlled clinical settings — seizures, psychotic episodes, manic states — the pathway from a validated biosignal biomarker to a regulatory-approved, patient-accessible device is extensive and demanding. Regulatory frameworks governing medical devices, particularly those indicated for neurological conditions, require a level of demonstrated reliability and safety that most academic research pipelines are not structured to produce.
 
-SENTINEL was built on the premise that **AI quality engineering for health sensors requires domain-specific eval infrastructure** — metrics that understand temporal proximity, cross-modal evidence, and the difference between a clinically significant hallucination and a benign false positive.
+AI systems applied to wearable and ambulatory biosignal data encounter this same constraint at the evaluation layer. Most LLM evaluation tooling assesses health AI using the same methods applied to general-purpose language models — exact match, BLEU score, and human preference ratings — without accounting for the clinical significance of errors. This approach is insufficient when model outputs constitute, or directly inform, clinical decisions.
+
+SENTINEL was developed on the premise that **AI quality engineering for health sensors requires domain-specific evaluation architecture** — infrastructure with metrics that account for temporal proximity, cross-modal evidence, and the distinction between a clinically significant hallucination and a benign false positive. The objective is not only to quantify model performance, but to do so in terms that are meaningful within the regulatory and clinical contexts where these systems are intended to operate.
 
 ---
 
