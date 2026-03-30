@@ -7,23 +7,33 @@
 
 ## Overview
 
-SENTINEL is an LLM evaluation framework designed to measure how reliably a language model detects clinically significant events from fused multi-modal biosignal inputs — EEG, EMG, and accelerometer.
+Neurological AI fails quietly. A model that detects seizures with 84% recall sounds impressive until you consider what happens in the other 16% — and whether the model had any idea it was about to miss. Most LLM evaluation frameworks cannot answer that question. They were built for text tasks, and they measure what is easy to measure: whether the answer matched, whether a human preferred it. They have no concept of temporal proximity, cross-modal evidence, or the difference between a hallucination on a clean signal and one triggered by a muscle artifact.
 
-Where most LLM eval frameworks operate on text-in / text-out tasks, SENTINEL addresses a harder problem: **evaluating AI judgment on inherently ambiguous, temporally-structured physiological data.** It measures not just whether the model detected an event, but *when*, *why*, and *how confident it should have been*.
+SENTINEL addresses this by treating biosignal evaluation as a first-class engineering problem. It fuses multi-modal physiological data — EEG, EMG, accelerometer — into structured prompt context, runs it through an LLM detection pipeline, and scores the output against ground truth using metrics designed for the failure modes that actually matter in clinical environments: not just whether an event was detected, but when, why, and how confident the model should have been.
 
-The framework is intentionally domain-agnostic at the architecture level and biosignal-specific at the metric level — making it extensible to new signal types while remaining clinically meaningful out of the box.
+The result is a domain-specific eval framework that measures five things general-purpose tools cannot: detection recall, temporal precision, cross-modal faithfulness, hallucination rate, and confidence calibration. It runs against three public datasets — CHB-MIT, EEGMMIDB, and WESAD — and produces structured JSON reports suitable for both research analysis and regulatory documentation. The architecture is intentionally extensible: biosignal-specific at the metric level, domain-agnostic at the pipeline level.
 
 ---
 
 ## Motivation
 
-The research literature correlating biosignal modalities to clinical outcomes is mature and well-evidenced. The translation of that evidence into accessible, clinically validated products, however, remains limited.
+The bottleneck is not scientific. For conditions characterized by symptoms that are sudden, episodic, and difficult to observe in controlled settings, the pathway from a validated biosignal biomarker to a patient-accessible device is long and demanding. Regulatory frameworks for neurological AI require a level of demonstrated reliability that most academic research pipelines are not structured to produce — and most AI evaluation tooling is not designed to support.
 
-The primary bottleneck is not scientific. For neurological conditions characterised by symptoms that are sudden, episodic, and difficult to observe in controlled clinical settings — seizures, psychotic episodes, manic states — the pathway from a validated biosignal biomarker to a regulatory-approved, patient-accessible device is extensive and demanding. Regulatory frameworks governing medical devices, particularly those indicated for neurological conditions, require a level of demonstrated reliability and safety that most academic research pipelines are not structured to produce.
+The core problem is metric mismatch. Most LLM evaluation frameworks assess health AI the same way they assess a chatbot — exact match, BLEU score, human preference ratings. These metrics are blind to the clinical significance of errors. They cannot distinguish a hallucinated event on a clean baseline segment from one triggered by a muscle artifact. They cannot penalize a correct detection that arrived four seconds too late. They have no concept of what a miscalibrated confidence score costs when it informs a clinical decision at 2am.
 
-AI systems applied to wearable and ambulatory biosignal data encounter this same constraint at the evaluation layer. Most LLM evaluation tooling assesses health AI using the same methods applied to general-purpose language models — exact match, BLEU score, and human preference ratings — without accounting for the clinical significance of errors. This approach is insufficient when model outputs constitute, or directly inform, clinical decisions.
+SENTINEL was built on the premise that AI quality engineering for health sensors requires domain-specific evaluation architecture — infrastructure with metrics that account for temporal proximity, cross-modal evidence, and the difference between a clinically significant hallucination and a benign false positive. The objective is not only to quantify model performance, but to do so in terms that are meaningful in the regulatory and clinical contexts where these systems will eventually operate.
 
-SENTINEL was developed on the premise that **AI quality engineering for health sensors requires domain-specific evaluation architecture** — infrastructure with metrics that account for temporal proximity, cross-modal evidence, and the distinction between a clinically significant hallucination and a benign false positive. The objective is not only to quantify model performance, but to do so in terms that are meaningful within the regulatory and clinical contexts where these systems are intended to operate.
+SENTINEL is also personal. This framework was shaped by close personal experience with the conditions it addresses — the kind that makes abstract evaluation criteria feel concrete, and "good enough" feel insufficient. That proximity is not a traditional credential. But it is the reason this framework exists, and the reason the evaluation criteria were designed with the stakes they were.
+
+---
+
+## Why Now
+
+Large language models have made a specific capability newly accessible: the ability to reason over complex, multi-modal inputs and return structured, interpretable outputs without task-specific supervised training. For biosignal analysis, this matters. The previous generation of neurological event detection systems required labeled datasets large enough to train domain-specific classifiers from scratch — a bottleneck that kept the technology inside research institutions. LLMs lower that barrier significantly.
+
+But capability without trust infrastructure is not a product. As LLMs move into clinical adjacent applications, the absence of domain-appropriate evaluation tooling is becoming the binding constraint. General-purpose benchmarks were not designed for systems where a false positive has a physiological context and a missed detection has a consequence. The window to establish evaluation standards for this domain — before the field consolidates around inadequate ones — is open now and will not stay open indefinitely.
+
+SENTINEL is built for this moment.
 
 ---
 
@@ -53,7 +63,7 @@ biosignal segments
 └─────────────────────┘
 ```
 
-Three agents, one pipeline. Intentionally mirrors the multi-agent pattern from [PRISM](https://github.com/twrappe/prism) — the same orchestration principles apply whether you're triaging CI/CD failures or evaluating biosignal AI.
+Three agents, one pipeline. Separating detection from scoring makes the eval layer independently auditable — the same orchestration principles apply whether you're triaging CI/CD failures or evaluating biosignal AI. Intentionally mirrors the multi-agent pattern from [PRISM](https://github.com/twrappe/prism).
 
 ---
 
@@ -162,7 +172,41 @@ Each eval run produces a structured JSON report:
   },
   "cross_modal_faithfulness": {
     "correct_channel_citation_rate": 0.78
-  }
+  },
+  "gate_status": "PASS"
+}
+```
+
+The following example shows a run where SENTINEL flagged meaningful quality degradation — high hallucination rate on artifact-heavy segments and temporal precision collapse on seizure boundary cases:
+
+```json
+{
+  "run_id": "chbmit_20260321_002",
+  "model": "gpt-4o",
+  "dataset": "chbmit",
+  "segments_evaluated": 500,
+  "metrics": {
+    "detection_recall": 0.81,
+    "temporal_precision": {
+      "mean_offset_seconds": 4.7,
+      "within_2s_window": 0.43
+    },
+    "hallucination_rate": 0.31,
+    "confidence_calibration": {
+      "ece": 0.19,
+      "high_confidence_accuracy": 0.61
+    }
+  },
+  "cross_modal_faithfulness": {
+    "correct_channel_citation_rate": 0.52
+  },
+  "gate_status": "FAIL",
+  "failure_reasons": [
+    "hallucination_rate exceeds threshold (0.31 > 0.10)",
+    "temporal_precision.within_2s_window below threshold (0.43 < 0.80)",
+    "confidence_calibration.ece exceeds threshold (0.19 > 0.10)"
+  ],
+  "diagnostic_note": "Elevated hallucination rate concentrated on EMG artifact segments. Temporal precision collapse suggests boundary ambiguity in seizure onset annotations for patients 7 and 12. High-confidence outputs poorly calibrated — model is asserting certainty it has not earned."
 }
 ```
 
@@ -183,17 +227,49 @@ SENTINEL extends this pattern into the biosignal domain, where ground truth ambi
 
 ## Roadmap
 
-- [ ] CHB-MIT dataset loader + seizure eval baseline
-- [ ] WESAD multi-modal fusion packager
+### Stage 1 — Core Pipeline Completion
+- [ ] CHB-MIT dataset loader + seizure eval baseline (end-to-end run against real data)
+- [ ] WESAD multi-modal fusion packager (EMG + accel integration)
+- [ ] EEGMMIDB loader implementation (currently raises `NotImplementedError`)
+- [ ] Integration tests covering the full detect → score → report path
+
+### Stage 2 — Signal Feature Quality
+- [ ] Replace mean/RMS/peak summaries with clinically meaningful features
+  - EEG: band power (delta, theta, alpha, beta, gamma), spectral edge frequency
+  - EMG: RMS amplitude, zero-crossing rate, burst onset/offset
+  - Accel: magnitude, dominant frequency, jerk
+- [ ] Validate feature representation with domain expert or clinical literature
+- [ ] Benchmark LLM detection performance before and after feature improvement
+
+### Stage 3 — Expanded Metrics
+- [ ] Add PPV / NPV (positive and negative predictive value)
+- [ ] Add explicit specificity alongside hallucination rate
+- [ ] Add F-beta score (configurable to weight misses vs. false alarms per use case)
+- [ ] Score artifact flag accuracy (when `artifact_flag=True`, was it correct?)
+- [ ] Per-subject stratification — surface whether aggregate metrics hide subject-level variance
+- [ ] Severity-weighted recall — penalise missing longer events more than shorter ones
+- [ ] LLM consistency metric — same segment twice should produce the same detection
+
+### Stage 4 — Extended Biosignal Coverage
+- [ ] Investigate additional signal modalities: ECG, EDA, skin temperature (already present in WESAD)
+- [ ] Evaluate whether cross-dataset generalisation holds (CHB-MIT vs. EEGMMIDB delta)
+- [ ] Explore additional public datasets covering conditions not yet represented (e.g. sleep staging, Parkinson's tremor)
+- [ ] Define hallucination taxonomy by physiological context (artifact-triggered vs. clean-baseline false positives)
+
+### Stage 5 — Operationalisation
+- [ ] Streaming eval mode for real-time sensor feeds
 - [ ] Confidence calibration plots (ECE curves)
 - [ ] Support for open-weight models via Ollama
-- [ ] Streaming eval mode for real-time sensor feeds
+- [ ] Cost and latency tracking per segment
+- [ ] Human-readable report translation layer for clinical audiences
 
 ---
 
 ## Background
 
-This project draws on prior work in EEG/BCI research and biosignal quality engineering. The eval methodology is informed by both clinical signal processing literature and modern LLM evaluation practices (DeepEval, Ragas).
+SENTINEL builds on a foundation of professional and research experience at the intersection of biosignal engineering and clinical AI. Prior work includes signal processing and hardware validation for wearable sensor systems — embedded firmware, sensor integration, and quality engineering for physiological data pipelines. That engineering background informs how SENTINEL handles signal fusion, ground truth ambiguity, and failure mode classification at the metric level.
+
+The clinical framing draws on earlier work in neurological event detection. As a senior capstone, I built a full-stack machine learning system for biosignal classification — handling data collection, model tuning, and a frontend and backend application for visualizing physiological states over time. That project is the direct technical precursor to SENTINEL's detection and scoring architecture. The research was subsequently developed into a business concept for an EEG-based early onset detection and patient-doctor reporting system, which reached national pitch competition recognition and placed in the final round of a global competition among several hundred teams. That work established the core thesis SENTINEL is built on: the bottleneck in neurological AI is not the science, but the infrastructure required to validate and trust it. The eval methodology is further informed by modern LLM evaluation practices including DeepEval and Ragas, extended here to meet the demands of a clinical signal domain.
 
 ---
 
