@@ -23,8 +23,6 @@ The core problem is metric mismatch. Most LLM evaluation frameworks assess healt
 
 SENTINEL was built on the premise that AI quality engineering for health sensors requires domain-specific evaluation architecture — infrastructure with metrics that account for temporal proximity, cross-modal evidence, and the difference between a clinically significant hallucination and a benign false positive. The objective is not only to quantify model performance, but to do so in terms that are meaningful in the regulatory and clinical contexts where these systems will eventually operate.
 
-SENTINEL is also personal. This framework was shaped by close personal experience with the conditions it addresses — the kind that makes abstract evaluation criteria feel concrete, and "good enough" feel insufficient. That proximity is not a traditional credential. But it is the reason this framework exists, and the reason the evaluation criteria were designed with the stakes they were.
-
 ---
 
 ## Why Now
@@ -225,51 +223,58 @@ SENTINEL extends this pattern into the biosignal domain, where ground truth ambi
 
 ---
 
-## Roadmap
+## Current Status
 
-### Stage 1 — Core Pipeline Completion
-- [ ] CHB-MIT dataset loader + seizure eval baseline (end-to-end run against real data)
-- [ ] WESAD multi-modal fusion packager (EMG + accel integration)
-- [ ] EEGMMIDB loader implementation (currently raises `NotImplementedError`)
-- [ ] Integration tests covering the full detect → score → report path
+### Complete
+- Multi-agent pipeline architecture (signal_packager → AnomalyAgent → EvalScoringAgent → report_generator)
+- Core metric implementations: detection recall, temporal precision, hallucination rate, confidence calibration (ECE)
+- CHB-MIT dataset loader
+- Structured JSON report output with PASS/FAIL gating
+- Docker Compose configuration
 
-### Stage 2 — Signal Feature Quality
-- [ ] Replace mean/RMS/peak summaries with clinically meaningful features
+### In Progress
+- CHB-MIT end-to-end eval baseline (first full run against real data)
+- WESAD multi-modal fusion packager (EMG + accel integration)
+- Integration tests covering the full detect → score → report path
+
+### Planned
+
+**Signal Feature Quality**
+- Replace mean/RMS/peak summaries with clinically meaningful features
   - EEG: band power (delta, theta, alpha, beta, gamma), spectral edge frequency
   - EMG: RMS amplitude, zero-crossing rate, burst onset/offset
   - Accel: magnitude, dominant frequency, jerk
-- [ ] Validate feature representation with domain expert or clinical literature
-- [ ] Benchmark LLM detection performance before and after feature improvement
+- Validate feature representation with domain expert or clinical literature
+- Benchmark LLM detection performance before and after feature improvement
 
-### Stage 3 — Expanded Metrics
-- [ ] Add PPV / NPV (positive and negative predictive value)
-- [ ] Add explicit specificity alongside hallucination rate
-- [ ] Add F-beta score (configurable to weight misses vs. false alarms per use case)
-- [ ] Score artifact flag accuracy (when `artifact_flag=True`, was it correct?)
-- [ ] Per-subject stratification — surface whether aggregate metrics hide subject-level variance
-- [ ] Severity-weighted recall — penalise missing longer events more than shorter ones
-- [ ] LLM consistency metric — same segment twice should produce the same detection
+**Expanded Metrics**
+- PPV / NPV (positive and negative predictive value)
+- Explicit specificity alongside hallucination rate
+- F-beta score (configurable to weight misses vs. false alarms per use case)
+- Artifact flag accuracy scoring
+- Per-subject stratification — surface whether aggregate metrics hide subject-level variance
+- Severity-weighted recall — penalise missing longer events more than shorter ones
+- LLM consistency metric — same segment twice should produce the same detection
 
-### Stage 4 — Extended Biosignal Coverage
-- [ ] Investigate additional signal modalities: ECG, EDA, skin temperature (already present in WESAD)
-- [ ] Evaluate whether cross-dataset generalisation holds (CHB-MIT vs. EEGMMIDB delta)
-- [ ] Explore additional public datasets covering conditions not yet represented (e.g. sleep staging, Parkinson's tremor)
-- [ ] Define hallucination taxonomy by physiological context (artifact-triggered vs. clean-baseline false positives)
+**Extended Biosignal Coverage**
+- EEGMMIDB loader implementation
+- Additional signal modalities: ECG, EDA, skin temperature (already present in WESAD)
+- Cross-dataset generalisation evaluation (CHB-MIT vs. EEGMMIDB delta)
+- Additional public datasets: sleep staging, Parkinson's tremor
+- Hallucination taxonomy by physiological context (artifact-triggered vs. clean-baseline false positives)
 
-### Stage 5 — Operationalisation
-- [ ] Streaming eval mode for real-time sensor feeds
-- [ ] Confidence calibration plots (ECE curves)
-- [ ] Support for open-weight models via Ollama
-- [ ] Cost and latency tracking per segment
-- [ ] Human-readable report translation layer for clinical audiences
+**Operationalisation**
+- Streaming eval mode for real-time sensor feeds
+- Confidence calibration plots (ECE curves)
+- Support for open-weight models via Ollama
+- Cost and latency tracking per segment
+- Human-readable report translation layer for clinical audiences
 
 ---
 
 ## Background
 
-SENTINEL builds on a foundation of professional and research experience at the intersection of biosignal engineering and clinical AI. Prior work includes signal processing and hardware validation for wearable sensor systems — embedded firmware, sensor integration, and quality engineering for physiological data pipelines. That engineering background informs how SENTINEL handles signal fusion, ground truth ambiguity, and failure mode classification at the metric level.
-
-The clinical framing draws on earlier work in neurological event detection. As a senior capstone, I built a full-stack machine learning system for biosignal classification — handling data collection, model tuning, and a frontend and backend application for visualizing physiological states over time. That project is the direct technical precursor to SENTINEL's detection and scoring architecture. The research was subsequently developed into a business concept for an EEG-based early onset detection and patient-doctor reporting system, which reached national pitch competition recognition and placed in the final round of a global competition among several hundred teams. That work established the core thesis SENTINEL is built on: the bottleneck in neurological AI is not the science, but the infrastructure required to validate and trust it. The eval methodology is further informed by modern LLM evaluation practices including DeepEval and Ragas, extended here to meet the demands of a clinical signal domain.
+SENTINEL builds on professional and research experience at the intersection of biosignal engineering and clinical AI, including signal processing, hardware validation, and quality engineering for wearable physiological data pipelines. The evaluation methodology draws on modern LLM eval practices — DeepEval, Ragas — extended to meet the demands of a clinical signal domain.
 
 ---
 
@@ -291,6 +296,14 @@ The CHB-MIT and WESAD datasets contain labeling inconsistencies, overlapping ann
 
 ---
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
 ## License
 
-MIT
+Copyright 2026 Thomas Wrappe
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full license text, or visit http://www.apache.org/licenses/LICENSE-2.0.
